@@ -17,7 +17,7 @@
 Example: installing foo-1.0:
 
 ```
-wget -O - http://website.domain.tld/software/foo-1.0.tar.gz | gunzip | tar x
+wget -O - http://website.domain.tld/foo-1.0.tar.gz | gunzip | tar x
 cd foo-1.0
 ./configure --prefix=~/opt/foo-1.0
 make
@@ -30,7 +30,7 @@ splice ~/opt/foo-1.0 ~/local
 Example: upgrading to foo-2.0:
 
 ```
-wget -O - http://website.domain.tld/software/foo-2.0.tar.gz | gunzip | tar x
+wget -O - http://website.domain.tld/foo-2.0.tar.gz | gunzip | tar x
 cd foo-2.0
 ./configure --prefix=~/opt/foo-2.0
 make
@@ -44,7 +44,7 @@ splice ~/opt/foo-2.0 ~/local
 If foo-1.0 had been installed directly into `~/local` instead of `~/opt/foo-1.0`, you would need to prune the old files out of the way first:
 
 ```
-wget -O - http://website.domain.tld/software/foo-2.0.tar.gz | gunzip | tar x
+wget -O - http://website.domain.tld/foo-2.0.tar.gz | gunzip | tar x
 cd foo-2.0
 ./configure --prefix=~/opt/foo-2.0
 make
