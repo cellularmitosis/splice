@@ -1,0 +1,212 @@
+#!/usr/bin/env python
+
+# prune, a replacement for graft
+# see https://github.com/cellularmitosis/splice
+# copyright Jason Pepas
+# based on ideas from Joseph Trent
+# released under the terms of the MIT license
+
+# typical usage:
+#   prune ~/opt/foo-1.0 ~/local
+
+
+# tweak if needed
+mkdir_path = "/bin/mkdir"
+mv_path = "/bin/mv"
+
+
+import sys
+import os
+from commands import getstatusoutput
+from optparse import OptionParser
+import datetime
+import tempfile
+import pwd
+import grp
+
+
+def run_or_die(command):
+    """run a command, returning output.  raise an exception if it fails."""
+    (status, stdio) = getstatusoutput(command)
+    if status != 0:
+        raise Exception("command '%s' failed with exit status %d and output '%s'" % (command, status, stdio))
+    return stdio
+
+
+# command line args
+parser = OptionParser(usage="Usage: %prog [options] <source> <destination>")
+parser.add_option('-s', '--silent', action='store_false', dest='verbose', default=True, help='print only errors')
+parser.add_option('-n', '--no-act', action='store_true', dest='noact', default=False, help='take no action (dry-run mode)')
+(options,args) = parser.parse_args()
+
+if len(args) != 2:
+    parser.print_help()
+    sys.exit(1)
+
+if options.noact == True and options.verbose == True:
+    print "Running in dry-run mode.  No filesystem alterations will be made."
+
+source_root = args[0]
+destination_root = args[1]
+
+# clean up the arguments
+# note: create special case for '/'
+if source_root != '/':
+    source_root = source_root.rstrip('/')
+if destination_root != '/':
+    destination_root = destination_root.rstrip('/')
+
+# first, make sure we have a .pruned dir
+pruned_root = os.path.join(destination_root, '.pruned')
+# here we use lexists() because it will return True even for broken symlinks
+if not os.path.lexists(pruned_root):
+    if options.noact == False:
+        os.mkdir(pruned_root)
+        run_or_die("chmod ugo+rx %s" % pruned_root)
+        if options.verbose == True:
+            print "NOTE: created directory", pruned_root
+else: # path exists
+    # python counts symlinks which point to dirs as dirs
+    if os.path.isdir(pruned_root) and not os.path.islink(pruned_root):
+        # .pruned dir already exists, nothing to do
+        pass
+    else: # exists but isn't a dir
+        print "ERROR: %s exists but is not a directory." % pruned_root
+
+
+# and our .pruned subdir
+# the format of this dir will look like:
+#   <instigating opt path>~<date>~<unique string>
+# ie:
+#   home_cell_opt_firefox-2.0.0.6~20071101110520~9MoOSY
+# the "instigating opt path" above is the path which required these files to
+# be pruned.
+timestamp = datetime.datetime.now()
+datestring = "%04d%02d%02d%02d%02d%02d" % (timestamp.year, timestamp.month, \
+    timestamp.day, timestamp.hour, timestamp.minute, timestamp.second)
+pruned_prefix = source_root.lstrip('/').replace('/','_') + '~' \
+    + datestring + '~'
+if options.noact == False:
+    pruned_path = tempfile.mkdtemp(suffix='', prefix=pruned_prefix, dir=pruned_root)
+    run_or_die("chmod ugo+rx %s" % pruned_path)
+    if options.verbose == True:
+        print "NOTE: created directory", pruned_path
+else:
+    # if we are performing a dry-run, there is no way of knowing what unique
+    # string mktemp would have created, so we use XXXXXX as a placeholder.
+    pruned_path = os.path.join(pruned_root, pruned_prefix + 'XXXXXX')
+
+
+# now generate the list of commands
+conflicts = []
+commandlist = []
+
+for (source_base, dirs, files) in os.walk(source_root):
+
+    # identify which relative subdir we are in
+    assert source_base.startswith(source_root)
+    (ignored, ignored, subdir) = source_base.partition(source_root)
+    subdir = subdir.strip('/')
+
+    # generate a list of files to exclude
+    excludefile = os.path.join(source_base,'.splice-exclude')
+    exlines = []
+    if os.path.exists(excludefile):
+        exfile = open(excludefile,'r')
+        exlines = exfile.readlines()
+        # get rid of newlines
+        exlines = map(str.strip,exlines)
+        exfile.close()
+    exlines.append('.splice-exclude')
+    exlines.append('.nosplice')
+
+    # honor .nosplice
+    # iterating through a list while modifying it will cause skips and repeats,
+    # so iterate through a copy but modify the original.
+    dirs_copy = dirs
+    for d in dirs_copy:
+        # here we use lexists() because it will return True even for broken symlinks
+        if os.path.exists(os.path.join(source_base, d, '.nosplice')) and os.path.lexists(os.path.join(destination_root,subdir,d)):
+            print "NOTE: ignoring directory", os.path.join(destination_root,subdir,d)
+            # removing the directory from dirs will cause os.walk to skip descending into it.
+            dirs.remove(d)
+
+    # honor .splice-exclude for dirs and files
+    for ex in exlines:
+        # here we use lexists() because it will return True even for broken symlinks
+        if ex in dirs and os.path.lexists(os.path.join(destination_root,subdir,ex)):
+            # removing the directory from dirs will cause os.walk to skip descending into it.
+            print "NOTE: ignoring directory", os.path.join(destination_root,subdir,ex)
+            dirs.remove(ex)
+        # here we use lexists() because it will return True even for broken symlinks
+        if ex in files and os.path.lexists(os.path.join(destination_root,subdir,ex)):
+            print "NOTE: ignoring file", os.path.join(destination_root,subdir,ex)
+            files.remove(ex)
+
+    # python counts symlinks which point to dirs as dirs.  however, we want to
+    # treat them like files.  so remove them from the dirs list and add them
+    # to the files list.
+    # iterating through a list while modifying it will cause skips and repeats,
+    # so iterate through a copy but modify the original.
+    dirs_copy = dirs
+    for d in dirs_copy:
+        d_src = os.path.join(source_base, d)
+        if os.path.islink(d_src):
+            # removing the directory from dirs will cause os.walk to skip descending into it.
+            dirs.remove(d)
+            files.append(d)
+
+    args = [mkdir_path]
+    args.append("--parents")
+    args.append("'%s'" % os.path.join(pruned_path, subdir))
+    mkdir_command = ' '.join(args)
+
+    file_commands = []
+    for f in files:
+        f_src = os.path.join(source_root, subdir, f)
+        f_dest = os.path.join(destination_root, subdir, f)
+
+        args = [mv_path]
+        args.append(f_dest)
+        args.append("'%s'" % os.path.join(pruned_path, subdir))
+        mv_command = ' '.join(args)
+
+        # here we use lexists() because it will return True even for broken symlinks
+        if os.path.lexists(f_dest):
+            if os.path.islink(f_dest) and os.readlink(f_dest) == f_src:
+                # this is a spliced symlink.  we don't touch this (that's
+                # unsplice's job)
+                pass
+            else:
+                file_commands.append(mv_command)
+        else:
+            # nothing to do
+            pass
+
+    # note: we don't itterate through dirs here, because those should be
+    # caught by unsplice.
+
+    # if there were any file commands, also append the mkdir command.
+    if len(file_commands) > 0:
+        commandlist.append(mkdir_command)
+        commandlist += file_commands
+
+
+# if there were no conflicts, execute the commands
+if len(conflicts) > 0:
+    print "ERROR: The following conflicts have been encountered:"
+    for c in conflicts:
+        print " ", c
+    sys.exit(1)
+elif options.verbose == True:
+    print "No conflicts detected.  Proceeding..."
+
+if len(commandlist) == 0:
+    print source_root, "has already been unspliced.  Nothing to do."
+    sys.exit(0)
+
+for command in commandlist:
+    if options.verbose == True:
+        print "+", command
+    if options.noact == False:
+        run_or_die(command)

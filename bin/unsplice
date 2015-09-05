@@ -1,0 +1,182 @@
+#!/usr/bin/env python
+
+# unsplice, a replacement for graft
+# see https://github.com/cellularmitosis/splice
+# copyright Jason Pepas
+# released under the terms of the MIT license
+
+# typical usage:
+#   unsplice ~/opt/foo-1.0 ~/local
+
+
+# tweak if needed
+rm_path = "/bin/rm"
+rmdir_path = "/bin/rmdir"
+
+
+import sys
+import os
+import commands
+from optparse import OptionParser
+
+
+def run_or_die(command):
+    """run a command, returning output.  raise an exception if it fails."""
+    (status, stdio) = commands.getstatusoutput(command)
+    if status != 0:
+        raise Exception("command '%s' failed with exit status %d and output '%s'" % (command, status, stdio))
+    return stdio
+
+
+# command line args
+parser = OptionParser(usage="Usage: %prog [options] <source> <destination>")
+parser.add_option('-s', '--silent', action='store_false', dest='verbose', default=True, help='print only errors')
+parser.add_option('-n', '--no-act', action='store_true', dest='noact', default=False, help='take no action (dry-run mode)')
+(options,args) = parser.parse_args()
+
+if len(args) != 2:
+    parser.print_help()
+    sys.exit(1)
+
+if options.noact == True and options.verbose == True:
+    print "Running in dry-run mode.  No filesystem alterations will be made."
+
+source_root = args[0]
+destination_root = args[1]
+
+# clean up the arguments
+# note: create special case for '/'
+if source_root != '/':
+    source_root = source_root.rstrip('/')
+if destination_root != '/':
+    destination_root = destination_root.rstrip('/')
+
+# now generate the list of commands
+conflicts = []
+commandlist = []
+
+for (source_base, dirs, files) in os.walk(source_root, topdown=False):
+
+    # identify which relative subdir we are in
+    assert source_base.startswith(source_root)
+    (ignored, ignored, subdir) = source_base.partition(source_root)
+    subdir = subdir.strip('/')
+
+    # generate a list of files to exclude
+    excludefile = os.path.join(source_base,'.splice-exclude')
+    exlines = []
+    if os.path.exists(excludefile):
+        exfile = open(excludefile,'r')
+        exlines = exfile.readlines()
+        # get rid of newlines
+        exlines = map(str.strip,exlines)
+        exfile.close()
+    exlines.append('.splice-exclude')
+    exlines.append('.nosplice')
+
+    # honor .nosplice
+    # iterating through a list while modifying it will cause skips and repeats,
+    # so iterate through a copy but modify the original.
+    dirs_copy = dirs
+    for d in dirs_copy:
+        if os.path.exists(os.path.join(source_base, d, '.nosplice')) and os.path.exists(os.path.join(destination_root,subdir,d)):
+            print "NOTE: ignoring directory", os.path.join(destination_root,subdir,d)
+            # removing the directory from dirs will cause os.walk to skip descending into it.
+            dirs.remove(d)
+
+    # honor .splice-exclude for dirs and files
+    for ex in exlines:
+        if ex in dirs and os.path.exists(os.path.join(destination_root,subdir,ex)):
+            # removing the directory from dirs will cause os.walk to skip descending into it.
+            print "NOTE: ignoring directory", os.path.join(destination_root,subdir,ex)
+            dirs.remove(ex)
+        # here we use lexists() because it will return True even for broken symlinks
+        if ex in files and os.path.lexists(os.path.join(destination_root,subdir,ex)):
+            print "NOTE: ignoring file", os.path.join(destination_root,subdir,ex)
+            files.remove(ex)
+
+    # python counts symlinks which point to dirs as dirs.  however, we want to
+    # treat them like files.  so remove them from the dirs list and add them
+    # to the files list.
+    # iterating through a list while modifying it will cause skips and repeats,
+    # so iterate through a copy but modify the original.
+    dirs_copy = dirs
+    for d in dirs_copy:
+        d_src = os.path.join(source_base, d)
+        if os.path.islink(d_src):
+            # removing the directory from dirs will cause os.walk to skip descending into it.
+            dirs.remove(d)
+            files.append(d)
+
+    for f in files:
+        f_src = os.path.join(source_root, subdir, f)
+        f_dest = os.path.join(destination_root, subdir, f)
+
+        args = [rm_path]
+        args.append("'%s'" % f_dest)
+        command = ' '.join(args)
+
+        # here we use lexists() because it will return True even for broken symlinks
+        if os.path.lexists(f_dest):
+            if os.path.islink(f_dest):
+                if os.readlink(f_dest) == f_src:
+                    commandlist.append(command)
+                else: # is a symlink, but points somewhere else
+                    conflict = "WARNING: conflict detected for command \"" + command + "\": " + f_dest + " is a symlink which points to " + os.readlink(f_dest) + " instead of " + f_src + ";  refusing to remove."
+                    conflicts.append(conflict)
+            else: # exists, but isn't a symlink
+                conflict = "WARNING: conflict detected for command \"" + command + "\": " + f_dest + " exists but is not a symlink;  refusing to remove."
+                conflicts.append(conflict)
+        else: # path doesn't exist
+            # nothing to do, the file has already been removed from dest.
+            pass
+
+    for d in dirs:
+        d_src = os.path.join(source_root, subdir, d)
+        d_dest = os.path.join(destination_root, subdir, d)
+        
+        args = [rm_path]
+        args.append("'%s'" % d_dest)
+        symlink_command = ' '.join(args)
+
+        args = [rmdir_path, "--ignore-fail-on-non-empty"]
+        args.append("'%s'" % d_dest)
+        dir_command = ' '.join(args)
+
+        # here we use lexists() because it will return True even for broken symlinks
+        if os.path.lexists(d_dest):
+            if os.path.islink(d_dest):
+                # for now, we don't deal with removing symlinks to dirs
+                if not os.path.exists(d_dest):
+                    print "NOTE: ignoring broken directory symlink %s." % d_dest
+                else:
+                    print "NOTE: ignoring directory symlink %s." % d_dest
+            else: # is a real dir (not a symlink)
+                if os.path.ismount(d_dest):
+                    # don't try to remove directories which are mount points.
+                    print "NOTE: ignoring mountpoint", os.path.join(d_dest)
+                else: # its a regular dir 
+                    commandlist.append(dir_command)
+        else: # path doesn't exist
+            # nothing to do, the file has already been removed from dest.
+            pass
+
+
+# if there are no conflicts, execute the commands
+if len(conflicts) > 0:
+    print "ERROR: The following conflicts have been encountered:"
+    for c in conflicts:
+        print " ", c
+    sys.exit(1)
+elif options.verbose == True:
+    print "No conflicts detected.  Proceeding..."
+
+if len(commandlist) == 0:
+    print source_root, "has already been unspliced.  Nothing to do."
+    sys.exit(0)
+
+for command in commandlist:
+    if options.verbose == True:
+        print "+", command
+    if options.noact == False:
+        run_or_die(command)
