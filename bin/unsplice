@@ -29,7 +29,7 @@ def run_or_die(command):
 
 
 # command line args
-parser = OptionParser(usage="Usage: %prog [options] <source> <destination>")
+parser = OptionParser(usage="Usage: %prog [options] <source> <destination>\ne.g. unsplice ~/opt/foo-1.0 ~/local")
 parser.add_option('-s', '--silent', action='store_false', dest='verbose', default=True, help='print only errors')
 parser.add_option('-n', '--no-act', action='store_true', dest='noact', default=False, help='take no action (dry-run mode)')
 (options,args) = parser.parse_args()
