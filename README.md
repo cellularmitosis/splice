@@ -59,7 +59,7 @@ This arrangement makes it easy to "undo" the prune later if needed (just rsync t
 
 # Latest release:
 
-[0.9](https://github.com/cellularmitosis/splice/releases/tag/0.9)
+* [0.9](https://github.com/cellularmitosis/splice/releases/tag/0.9) (September 5th, 2015)
 
 # Installation (bootstrapping):
 
