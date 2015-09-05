@@ -41,7 +41,7 @@ splice ~/opt/foo-2.0 ~/local
 
 ## prune
 
-If foo-1.0 had been installed directly into `~/local` instead of `~/opt/foo-1.0`, you would need to prune the old files out of the way first:
+`unsplice` will remove symlinks, but not regular files.  `prune` is a more powerful / less safe tool for removing files which have been directly installed into ~/local.  If you have been in the habit of installing software directly into `~/local`, you will need to use `prune` as you transition towards splicing installations from `~/opt` into `~/local`.
 
 ```
 wget -O - http://website.domain.tld/foo-2.0.tar.gz | gunzip | tar x
@@ -55,7 +55,7 @@ splice ~/opt/foo-2.0 ~/local
 
 This would create a directory `~/local/.pruned/home_<user>_opt_foo-2.0~<datestring>~<uniquestring>` which would contain all of the files which would have conflicted with foo-2.0.
 
-This arrangement makes it easy to "undo" the prune later if needed (just rsync the `.pruned` directory back into its original location).
+This arrangement makes it easy to "undo" the prune later (just rsync the `.pruned` directory back into its original location).
 
 # Latest release:
 
