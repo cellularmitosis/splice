@@ -57,6 +57,23 @@ This would create a directory `~/local/.pruned/home_<user>_opt_foo-2.0~<datestri
 
 This arrangement makes it easy to "undo" the prune later if needed (just rsync the `.pruned` directory back into its original location).
 
+# Latest release:
+
+[0.9](https://github.com/cellularmitosis/splice/releases/tag/0.9)
+
+# Installation (bootstrapping):
+
+```
+cd /tmp
+wget -O - https://github.com/cellularmitosis/splice/archive/0.9.tar.gz | gunzip | tar x
+mkdir -p ~/opt
+mv splice-0.9 ~/opt/
+cd ~/opt/splice-0.9/bin
+./splice ~/opt/splice-0.9 ~/local
+```
+
+Make sure `~/local/bin` is in your `$PATH`.
+
 # Pre-github release history:
 
 Here is the pre-github changelog:
