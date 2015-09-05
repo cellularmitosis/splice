@@ -2,9 +2,9 @@
 
 `splice` is tool which eases the task of maintaining a built-from-source local repository of software on unix-like systems.  The typical use-case would be creating a `/usr/local`-style hierarchy of symlinks from an `/opt`-style directory tree.
 
-`splice` is a replacement for [graft](http://peters.gormand.com.au/Home/tools/graft/graft-html).
+`splice` is intended as a replacement for [graft](http://peters.gormand.com.au/Home/tools/graft/graft-html).
 
-`splice` is open-source software released under the MIT license (previously under the GNU GPL version 2).
+`splice` is open-source software released under the terms of the MIT license (previously under the GNU GPL version 2).
 
 `splice` is written in Python.
 
