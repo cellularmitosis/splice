@@ -69,7 +69,7 @@ wget -O - https://github.com/cellularmitosis/splice/archive/0.9.tar.gz | gunzip 
 mkdir -p ~/opt
 mv splice-0.9 ~/opt/
 cd ~/opt/splice-0.9/bin
-./splice ~/opt/splice-0.9 ~/local
+./splice ~/opt/splice-0.9/bin ~/local/bin
 ```
 
 Make sure `~/local/bin` is in your `$PATH`.
