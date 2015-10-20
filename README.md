@@ -59,13 +59,13 @@ This arrangement makes it easy to "undo" the prune later (just rsync the `.prune
 
 # Latest release:
 
-* [0.9](https://github.com/cellularmitosis/splice/releases/tag/0.9) (September 5th, 2015)
+* [0.9](https://github.com/pepaslabs/splice/releases/tag/0.9) (September 5th, 2015)
 
 # Installation (bootstrapping):
 
 ```
 cd /tmp
-wget -O - https://github.com/cellularmitosis/splice/archive/0.9.tar.gz | gunzip | tar x
+wget -O - https://github.com/pepaslabs/splice/archive/0.9.tar.gz | gunzip | tar x
 mkdir -p ~/opt
 mv splice-0.9 ~/opt/
 cd ~/opt/splice-0.9/bin
