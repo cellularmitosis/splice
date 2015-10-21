@@ -59,57 +59,67 @@ This arrangement makes it easy to "undo" the prune later (just rsync the `.prune
 
 # Latest release:
 
-* [0.9](https://github.com/pepaslabs/splice/releases/tag/0.9) (September 5th, 2015)
+* [0.10](https://github.com/pepaslabs/splice/releases/tag/0.10) (October 20th, 2015)
 
 # Installation (bootstrapping):
 
 ```
 cd /tmp
-wget -O - https://github.com/pepaslabs/splice/archive/0.9.tar.gz | gunzip | tar x
+wget -O - https://github.com/pepaslabs/splice/archive/0.10.tar.gz | gunzip | tar x
 mkdir -p ~/opt
-mv splice-0.9 ~/opt/
-cd ~/opt/splice-0.9/bin
-./splice ~/opt/splice-0.9/bin ~/local/bin
+mv splice-0.10 ~/opt/
+cd ~/opt/splice-0.10/bin
+./splice ~/opt/splice-0.10/bin ~/local/bin
 ```
 
 Make sure `~/local/bin` is in your `$PATH`.
 
-# Pre-github release history:
+# Changelog:
 
-Here is the pre-github changelog:
-
-## 0.2 (Apr 28th 2008)
+## 0.10 (October 20th 2015)
 
 Changes:
-* First public release
+* Tweaks to conflict warning output formatting.
 
-## 0.3 (Jun 20th 2008)
-
-Changes:
-* `unsplice` no longer attempts to remove mountpoints
-
-## 0.4 (Oct 13th 2008)
+## 0.9 (September 5th 2015)
 
 Changes:
-* Explicitly use python2.5
+* None (Publishing to github).
 
-## 0.5 (Oct 15th 2008)
+# Pre-github changelog:
 
-Changes:
-* Fixed bug in how symlinks which point to dirs are handled
-
-## 0.6 (Nov 19th 2008)
+## 0.8 (Apr 13th 2009)
 
 Changes:
-* Fixed another symlink-related bug.
+* Fixed incorrect handling of '/' as the destination directory.
 
 ## 0.7 (Jan 8th 2009)
 
 Changes:
 * Decided on policy of not touching symlinks to dirs in unsplice.
 
-## 0.8 (Apr 13th 2009)
+## 0.6 (Nov 19th 2008)
 
 Changes:
-* Fixed incorrect handling of '/' as the destination directory.
+* Fixed another symlink-related bug.
+
+## 0.5 (Oct 15th 2008)
+
+Changes:
+* Fixed bug in how symlinks which point to dirs are handled
+
+## 0.4 (Oct 13th 2008)
+
+Changes:
+* Explicitly use python2.5
+
+## 0.3 (Jun 20th 2008)
+
+Changes:
+* `unsplice` no longer attempts to remove mountpoints
+
+## 0.2 (Apr 28th 2008)
+
+Changes:
+* First public release
 
