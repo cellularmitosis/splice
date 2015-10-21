@@ -125,11 +125,19 @@ for (source_base, dirs, files) in os.walk(source_root):
             else: # not a dir
                 if os.path.islink(d_dest) and not os.path.exists(d_dest):
                     # it is a broken symlink
-                    conflict = "WARNING: conflict detected for command \"" + command + "\": " + d_dest + " exists but is a broken symlink;  refusing to clobber."
+                    conflict = """Conflict detected for command:
+  %s
+The destination file:
+  %s
+exists but is a broken symlink;  refusing to clobber.""" % (command, d_dest)
                     conflicts.append(conflict)
                 else:
                     # its just a regular file, but it is in the way
-                    conflict = "WARNING: conflict detected for command \"" + command + "\": " + d_dest + " exists but is not a directory;  refusing to clobber."
+                    conflict = """Conflict detected for command:
+  %s
+The destination file:
+  %s
+exists but is not a directory;  refusing to clobber.""" % (command, d_dest)
                     conflicts.append(conflict)
 
     # for each file in our current subdir...
@@ -151,18 +159,30 @@ for (source_base, dirs, files) in os.walk(source_root):
                     # correct symlink already exists, nothing to do
                     pass
                 else: # symlink points to something else
-                    conflict = "WARNING: conflict detected for command \"" + command + "\": " + f_dest + " is a symlink which points to " + os.readlink(f_dest) + " instead of " + f_src + ";  refusing to clobber."
+                    conflict = """Conflict detected for command:
+  %s
+The destination file:
+  %s
+is a symlink which points to:
+  %s
+instead of:
+  %s
+Refusing to clobber.""" % (command, f_dest, os.readlink(f_dest), f_src)
                     conflicts.append(conflict)
             else: # path is not a symlink
-                conflict = "WARNING: conflict detected for command \"" + command + "\": " + f_dest + " exists but is not a symlink;  refusing to clobber."
+                conflict = """Conflict detected for command:
+  %s
+The destination file:
+  %s
+exists but is not a symlink;  refusing to clobber.""" % (command, f_dest)
                 conflicts.append(conflict)
 
 # now execute the commands if there aren't any conflicts
 
 if len(conflicts) > 0:
-    print "ERROR: The following conflicts have been encountered:"
+    print "ERROR: The following conflicts have been detected:"
     for c in conflicts:
-        print " ", c
+        print "\n", c
     sys.exit(1)
 elif options.verbose == True:
     print "No conflicts detected.  Proceeding..."
